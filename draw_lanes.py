@@ -1,4 +1,6 @@
+from turtle import left
 import cv2
+from matplotlib.pyplot import plot
 import numpy as np
 import matplotlib.image as mpimg
 
@@ -10,24 +12,22 @@ def hist(img):
 
 class DrawLanes:
     """ Class includes information about detected lane lines.
-
     Attributes:
-        left_polyn (np.array): Coefficients of a polynomial that fit left lane line
-        right_polyn (np.array): Coefficients of a polynomial that fit right lane line
+        left_fit (np.array): Coefficients of a polynomial that fit left lane line
+        right_fit (np.array): Coefficients of a polynomial that fit right lane line
         parameters (dict): Dictionary containing all parameters needed for the pipeline
         debug (boolean): Flag for debug/normal mode
     """
     def __init__(self):
         """Init Drawlanes.
-
         Parameters:
-            left_polyn (np.array): Coefficients of polynomial that fit left lane
+            left_fit (np.array): Coefficients of polynomial that fit left lane
             right_fit (np.array): Coefficients of polynomial that fit right lane
             binarized (np.array): binarized image
         """
-        self.left_polyn = None
-        self.right_polyn = None
-        self.binarized = None
+        self.left_fit = None
+        self.right_fit = None
+        self.binary = None
         self.nonzero = None
         self.nonzerox = None
         self.nonzeroy = None
@@ -54,10 +54,8 @@ class DrawLanes:
 
     def forward(self, img):
         """Take a image and detect lane lines.
-
         Parameters:
             img (np.array): An binary image containing relevant pixels
-
         Returns:
             Image (np.array): An RGB image containing lane lines pixels and other details
         """
@@ -67,7 +65,6 @@ class DrawLanes:
     
     def extract_features(self, img):
         """ Extract features from a binary image
-
         Parameters:
             img (np.array): A binary image
         """
@@ -85,12 +82,10 @@ class DrawLanes:
 
     def pixels_in_window(self, center, margin, height):
         """ Return all pixel that in a specific window
-
         Parameters:
             center (tuple): coordinate of the center of the window
             margin (int): half width of the window
             height (int): height of the window
-
         Returns:
             pixelx (np.array): x coordinates of pixels that lie inside the window
             pixely (np.array): y coordinates of pixels that lie inside the window
@@ -100,15 +95,13 @@ class DrawLanes:
 
         condx = (topleft[0] <= self.nonzerox) & (self.nonzerox <= bottomright[0])
         condy = (topleft[1] <= self.nonzeroy) & (self.nonzeroy <= bottomright[1])
-        return self.nonzerox[condx&condy], self.nonzeroy[condx&condy]
+        return self.nonzerox[condx&condy], self.nonzeroy[condx&condy],topleft,bottomright
 
 
     def find_lane_pixels(self, img):
             """Find lane pixels from a binary warped image.
-
             Parameters:
                 img (np.array): A binary warped image
-
             Returns:
                 leftx (np.array): x coordinates of left lane pixels
                 lefty (np.array): y coordinates of left lane pixels
@@ -140,7 +133,9 @@ class DrawLanes:
 
             # Create empty lists to reveice left and right lane pixel
             leftx, lefty, rightx, righty = [], [], [], []
-
+            # two lists the first of topleft windows points the second of the bottomright windows points
+            topleft_windows = []
+            bottomright_windows = []
             # Step through the windows one by one
             for _ in range(self.nwindows):
                 y_current -= self.window_height
@@ -148,9 +143,12 @@ class DrawLanes:
                 center_right = (rightx_current, y_current)
 
                 ## getting the coordinates of the pixels of left and right lane lines within the current window
-                good_left_x, good_left_y = self.pixels_in_window(center_left, self.margin, self.window_height)
-                good_right_x, good_right_y = self.pixels_in_window(center_right, self.margin, self.window_height)
-
+                good_left_x, good_left_y,topleft,bottomright = self.pixels_in_window(center_left, self.margin, self.window_height)
+                topleft_windows.append(topleft)
+                bottomright_windows.append(bottomright)
+                good_right_x, good_right_y,topleft,bottomright = self.pixels_in_window(center_right, self.margin, self.window_height)
+                topleft_windows.append(topleft)
+                bottomright_windows.append(bottomright)
                 # Append these indices to the lists
                 leftx.extend(good_left_x)
                 lefty.extend(good_left_y)
@@ -167,20 +165,18 @@ class DrawLanes:
             ## out_img contains ONLY left lane-line and right lane-line
             # cv2.imshow("find_lane_pixels", out_img)
             # cv2.waitKey(0)
-            return leftx, lefty, rightx, righty, out_img
+            return leftx, lefty, rightx, righty, out_img,topleft_windows,bottomright_windows
 
 
     def fit_poly(self, img):
             """Find the lane line from an image and draw it.
-
             Parameters:
                 img (np.array): a binary warped image
-
             Returns:
                 out_img (np.array): a RGB image that have lane line drawn on that.
             """
 
-            leftx, lefty, rightx, righty, out_img = self.find_lane_pixels(img)
+            leftx, lefty, rightx, righty, out_img,topleft_windows,bottomright_windows = self.find_lane_pixels(img)
 
             if len(lefty) > 1500:
                 # print("left polyfit: ", np.polyfit(lefty, leftx, 2))
@@ -207,20 +203,30 @@ class DrawLanes:
             left_fitx = self.left_fit[0]*ploty**2 + self.left_fit[1]*ploty + self.left_fit[2]
             right_fitx = self.right_fit[0]*ploty**2 + self.right_fit[1]*ploty + self.right_fit[2]
 
+            ploty1 = ploty.reshape((ploty.shape[0],1))
+            left_fitx1 = left_fitx.reshape((left_fitx.shape[0],1))
+            right_fitx1 = right_fitx.reshape((right_fitx.shape[0],1))
+
+            left_line = np.concatenate((left_fitx1,ploty1),axis=1)
+            left_line = left_line = left_line.astype('int32')
+            left_line = left_line.reshape((-1,1,2))
+            right_line =  np.concatenate((right_fitx1,ploty1),axis=1)
+            right_line = right_line = right_line.astype('int32')
+            right_line = right_line.reshape((-1,1,2))
+            
             # Visualization
             for i, y in enumerate(ploty):
                 l = int(left_fitx[i])
                 r = int(right_fitx[i])
                 y = int(y)
                 cv2.line(out_img, (l, y), (r, y), (0, 255, 0))
-            ## cv2.line(image, start_point, end_point, color, thickness)
 
             lR, rR, pos = self.measure_curvature()
 
             ## out_img contains left lane-line and right lane-line AND the green defined region between them
             # cv2.imshow("fit_poly", out_img)
             # cv2.waitKey(0)
-            return out_img
+            return out_img,left_line,right_line,img,topleft_windows,bottomright_windows
 
     def plot(self, out_img):
         np.set_printoptions(precision=6, suppress=True)

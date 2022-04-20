@@ -5,7 +5,7 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 
-class CameraCalibration():
+class cameraCalibration():
     """ this class is used to calibrate camera and cancel distortion so,
     the detection is more accurate.
     We use OpenCV  documentation, functions and guidelines to do this

@@ -9,7 +9,7 @@ from cameraCalibration import cameraCalibration
 from Thresholding import *
 from PerspectiveTranform import *
 from draw_lanes import *
-debug = 1
+import sys
 class FindLaneLines:
     def __init__(self):
         """ Init Application"""
@@ -18,7 +18,7 @@ class FindLaneLines:
         self.transform = PerspectiveTranform()
         self.lanelines = DrawLanes()
 
-    def forward(self, img):
+    def forward(self, img,debug=0):
         out_img = np.copy(img)
         img = self.calibration.undistort(img)
         if debug == 1:
@@ -51,17 +51,17 @@ class FindLaneLines:
             cv2.waitKey(0)
 
         out_img = cv2.addWeighted(out_img, 1, img, 0.6, 0)
-        # out_img = self.lanelines.plot(out_img)
-        # if debug == 1:
-        #     cv2.imshow("final out",img)
-        #     cv2.waitKey(0)
+        out_img = self.lanelines.plot(out_img)
+        if debug == 1:
+            cv2.imshow("final out",out_img)
+            cv2.waitKey(0)
         return out_img
 
-    def process_image(self, input_path, output_path):
+    def process_image(self, input_path, output_path,debug):
         img = cv2.imread(input_path)
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
         img = cv2.resize(img,(1280,720))
-        out_img = self.forward(img)
+        out_img = self.forward(img,debug)
         cv2.imwrite(output_path,out_img)
 
     def process_video(self, input_path, output_path):
@@ -70,12 +70,14 @@ class FindLaneLines:
         out_clip.write_videofile(output_path, audio=False)
 
 def main():
-    in_dir = "lanes2.png"
-    out_dir = "output_videos/lane.jpg"
-    input_choice= 0
+
+    in_dir = sys.argv[1]
+    out_dir = sys.argv[2]
+    input_choice= int(sys.argv[3])
+    debug = int(sys.argv[4])
     if input_choice ==0 :
         findLaneLines = FindLaneLines()
-        findLaneLines.process_image(in_dir,out_dir)
+        findLaneLines.process_image(in_dir,out_dir,debug)
     if input_choice ==1 :
         findLaneLines = FindLaneLines()
         findLaneLines.process_video("project_video.mp4","output_videos/output.mp4")

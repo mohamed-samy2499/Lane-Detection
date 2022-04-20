@@ -35,7 +35,7 @@ class FindLaneLines:
         if debug == 1:
             cv2.imshow("Binary image",img)
             cv2.waitKey(0)
-        img,left_line,right_line,img1,topleft_windows,bottomright_windows = self.lanelines.forward(img, first, second, third)
+        img,left_line,right_line,img1,topleft_windows,bottomright_windows = self.lanelines.forward(img, first, second)
         if debug == 1:
             debug_img = np.dstack((img1, img1, img1))
             cv2.polylines(debug_img,[left_line],False,(255,0,0),15)

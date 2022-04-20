@@ -109,7 +109,7 @@ class DrawLanes:
         ## In recentered window, it requires at least 50 pixels to consider this window a part of the detected line.
         self.minpix = 50
 
-    def forward(self, img, first, second, third):
+    def forward(self, img, first, second):
         """Take a image and detect lane lines.
         Parameters:
             img (np.array): An binary image containing relevant pixels
@@ -118,7 +118,6 @@ class DrawLanes:
         """
         self.first = first
         self.second = second
-        self.third = third
         self.extract_features(img)
         return self.fit_poly(img)
 
@@ -286,6 +285,14 @@ class DrawLanes:
             ## out_img contains left lane-line and right lane-line AND the green defined region between them
             # cv2.imshow("fit_poly", out_img)
             # cv2.waitKey(0)
+
+            # third = cv2.resize(img, (285, 160))
+            # print(self.second.shape)
+            # self.second = np.dstack((self.second, self.second, self.second))
+            # print(self.second.shape)
+            # print(out_img[5:165, 990:1275, :].shape)
+            # out_img[5:165, 990:1275, :] = self.second[:, :, :]
+
             return out_img,left_line,right_line,img,topleft_windows,bottomright_windows
 
     def plot(self, out_img):
@@ -342,21 +349,30 @@ class DrawLanes:
         # cv2.imshow(" ", out_img_result)
         # cv2.waitKey(0)
 
+        # self.second = image_resize(self.second, width = 285, height = None, inter = cv2.INTER_AREA)
+        self.second = cv2.resize(self.second, (285, 160))
+        print(self.second.shape)
+        self.second = np.dstack((self.second, self.second, self.second))
+        print(self.second.shape)
+        print(out_img[5:165, 990:1275, :].shape)
+        out_img[5:165, 990:1275, :] = self.second[:, :, :]
+
         # x, y = 430, 0
         # self.second = image_resize(self.second, width = 285, height = None, inter = cv2.INTER_AREA)
         # print(self.second.shape)
+        # self.second = np.dstack((self.second, self.second, self.second))
         # alpha_mask = self.second[:, :, 2] / 255.0
         # second_img_result = self.second[:, :, :3].copy()
         # overlay_second = self.second[:, :, :3]
         # overlay_image_alpha(second_img_result, overlay_second, x, y, alpha_mask)
         # print(self.second.shape)
-        # self.second = np.dstack((overlay_second, overlay_second, overlay_second))
+        # # self.second = np.dstack((overlay_second, overlay_second, overlay_second))
         # print(self.second.shape)
         # c, d = overlay_second[:,:,3].nonzero()
         # out_img[c+5, d+505+wtab//2] = second_img_result[a, b, :3]
 
         # self.second = np.dstack((self.second, self.second, self.second))
-        # y, x = self.second[:,:,3].nonzero()
+        # y, x = self.second[:,:,3]
         # out_img[y, x+505+wtab//2] = self.second[y, x, :3]
 
         direction = max(set(self.dir), key = self.dir.count)

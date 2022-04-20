@@ -82,6 +82,10 @@ class DrawLanes:
             right_fit (np.array): Coefficients of polynomial that fit right lane
             binarized (np.array): binarized image
         """
+        self.left_line = None
+        self.right_line = None
+        self.topleft_windows = []
+        self.bottomright_windows = []
         self.left_fit = None
         self.right_fit = None
         self.binary = None
@@ -292,6 +296,12 @@ class DrawLanes:
             # print(self.second.shape)
             # print(out_img[5:165, 990:1275, :].shape)
             # out_img[5:165, 990:1275, :] = self.second[:, :, :]
+            self.right_line = right_line
+            self.left_line = left_line
+            self.topleft_windows = topleft_windows
+            self.bottomright_windows = bottomright_windows
+            
+           
 
             return out_img,left_line,right_line,img,topleft_windows,bottomright_windows
 
@@ -349,7 +359,8 @@ class DrawLanes:
         # cv2.imshow(" ", out_img_result)
         # cv2.waitKey(0)
 
-        # self.second = image_resize(self.second, width = 285, height = None, inter = cv2.INTER_AREA)
+        # Binary image bird view
+        actual_size = np.copy(self.second)
         self.second = cv2.resize(self.second, (285, 160))
         print(self.second.shape)
         self.second = np.dstack((self.second, self.second, self.second))
@@ -357,24 +368,14 @@ class DrawLanes:
         print(out_img[5:165, 990:1275, :].shape)
         out_img[5:165, 990:1275, :] = self.second[:, :, :]
 
-        # x, y = 430, 0
-        # self.second = image_resize(self.second, width = 285, height = None, inter = cv2.INTER_AREA)
-        # print(self.second.shape)
-        # self.second = np.dstack((self.second, self.second, self.second))
-        # alpha_mask = self.second[:, :, 2] / 255.0
-        # second_img_result = self.second[:, :, :3].copy()
-        # overlay_second = self.second[:, :, :3]
-        # overlay_image_alpha(second_img_result, overlay_second, x, y, alpha_mask)
-        # print(self.second.shape)
-        # # self.second = np.dstack((overlay_second, overlay_second, overlay_second))
-        # print(self.second.shape)
-        # c, d = overlay_second[:,:,3].nonzero()
-        # out_img[c+5, d+505+wtab//2] = second_img_result[a, b, :3]
-
-        # self.second = np.dstack((self.second, self.second, self.second))
-        # y, x = self.second[:,:,3]
-        # out_img[y, x+505+wtab//2] = self.second[y, x, :3]
-
+        #  lines connected with windows
+        actual_size = np.dstack((actual_size, actual_size, actual_size))
+        cv2.polylines(actual_size,[self.left_line],False,(255,0,0),15)
+        cv2.polylines(actual_size,[self.right_line],False,(255,0,0),15)
+        for i in range(18):
+            cv2.rectangle(actual_size,self.topleft_windows[i],self.bottomright_windows[i],(0,0,255),8)
+        actual_size = cv2.resize(actual_size,(285, 160))
+        out_img[5:165, 705:990, :] = actual_size[:, :, :]
         direction = max(set(self.dir), key = self.dir.count)
         msg = "Stay Straight"
         curvature_msg = "Curvature = {:.0f} m".format(min(lR, rR))

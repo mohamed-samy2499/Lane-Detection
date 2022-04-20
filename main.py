@@ -25,14 +25,17 @@ class FindLaneLines:
             cv2.imshow("camera calibiration",img)
             cv2.waitKey(0)
         img = self.transform.BirdView(img)
+        first = img
         if debug == 1:
             cv2.imshow("Bird view",img)
             cv2.waitKey(0)
         img = self.thresholding.forward(img)
+        second = img
+        third = None
         if debug == 1:
             cv2.imshow("Binary image",img)
             cv2.waitKey(0)
-        img,left_line,right_line,img1,topleft_windows,bottomright_windows = self.lanelines.forward(img)
+        img,left_line,right_line,img1,topleft_windows,bottomright_windows = self.lanelines.forward(img, first, second, third)
         if debug == 1:
             debug_img = np.dstack((img1, img1, img1))
             cv2.polylines(debug_img,[left_line],False,(255,0,0),15)
@@ -41,6 +44,7 @@ class FindLaneLines:
             cv2.waitKey(0)
             for i in range(18):
                 cv2.rectangle(debug_img,topleft_windows[i],bottomright_windows[i],(0,0,255),8)
+            # third = debug_img
             cv2.imshow("sliding windows",debug_img)
             cv2.waitKey(0)
             cv2.imshow("Filled lanes",img)
@@ -80,7 +84,8 @@ def main():
         findLaneLines.process_image(in_dir,out_dir,debug)
     if input_choice ==1 :
         findLaneLines = FindLaneLines()
-        findLaneLines.process_video("project_video.mp4","output_videos/output.mp4")
+        # findLaneLines.process_video("project_video.mp4","output_videos/output.mp4")
+        findLaneLines.process_video("5_seconds_video.mkv","output_videos//5_seconds_video_output.mp4")
 
 
 if __name__ == "__main__":

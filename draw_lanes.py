@@ -10,6 +10,63 @@ def hist(img):
         # cv2.waitKey(0)
         return np.sum(bottom_half, axis=0)
 
+def overlay_image_alpha(img, img_overlay, x, y, alpha_mask):
+    """Overlay `img_overlay` onto `img` at (x, y) and blend using `alpha_mask`.
+
+    `alpha_mask` must have same HxW as `img_overlay` and values in range [0, 1].
+    """
+    # Image ranges
+    y1, y2 = max(0, y), min(img.shape[0], y + img_overlay.shape[0])
+    x1, x2 = max(0, x), min(img.shape[1], x + img_overlay.shape[1])
+
+    # Overlay ranges
+    y1o, y2o = max(0, -y), min(img_overlay.shape[0], img.shape[0] - y)
+    x1o, x2o = max(0, -x), min(img_overlay.shape[1], img.shape[1] - x)
+
+    # Exit if nothing to do
+    if y1 >= y2 or x1 >= x2 or y1o >= y2o or x1o >= x2o:
+        return
+
+    # Blend overlay within the determined ranges
+    img_crop = img[y1:y2, x1:x2]
+    img_overlay_crop = img_overlay[y1o:y2o, x1o:x2o]
+    alpha = alpha_mask[y1o:y2o, x1o:x2o, np.newaxis]
+    alpha_inv = 1.0 - alpha
+
+    img_crop[:] = alpha * img_overlay_crop + alpha_inv * img_crop
+
+
+def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
+        # initialize the dimensions of the image to be resized and
+        # grab the image size
+        dim = None
+        (h, w) = image.shape[:2]
+
+        # if both the width and height are None, then return the
+        # original image
+        if width is None and height is None:
+            return image
+
+        # check to see if the width is None
+        if width is None:
+            # calculate the ratio of the height and construct the
+            # dimensions
+            r = height / float(h)
+            dim = (int(w * r), height)
+
+        # otherwise, the height is None
+        else:
+            # calculate the ratio of the width and construct the
+            # dimensions
+            r = width / float(w)
+            dim = (width, int(h * r))
+
+        # resize the image
+        resized = cv2.resize(image, dim, interpolation = inter)
+
+        # return the resized image
+        return resized
+
 class DrawLanes:
     """ Class includes information about detected lane lines.
     Attributes:
@@ -52,13 +109,16 @@ class DrawLanes:
         ## In recentered window, it requires at least 50 pixels to consider this window a part of the detected line.
         self.minpix = 50
 
-    def forward(self, img):
+    def forward(self, img, first, second, third):
         """Take a image and detect lane lines.
         Parameters:
             img (np.array): An binary image containing relevant pixels
         Returns:
             Image (np.array): An RGB image containing lane lines pixels and other details
         """
+        self.first = first
+        self.second = second
+        self.third = third
         self.extract_features(img)
         return self.fit_poly(img)
 
@@ -248,15 +308,56 @@ class DrawLanes:
         if len(self.dir) > 10:
             self.dir.pop(0)
 
-        W = 400
-        H = 500
+        W = 420
+        H = 400
         widget = np.copy(out_img[:H, :W])
         widget //= 2
-        widget[0,:] = [0, 0, 255]
-        widget[-1,:] = [0, 0, 255]
-        widget[:,0] = [0, 0, 255]
-        widget[:,-1] = [0, 0, 255]
+        ## cyan borber
+        widget[0,:] = [0, 255, 255]
+        widget[-1,:] = [0, 255, 255]
+        widget[:,0] = [0, 255, 255]
+        widget[:,-1] = [0, 255, 255]
         out_img[:H, :W] = widget
+
+        wtab = 425
+        htab = 175
+        tab = np.copy(out_img[:htab, wtab:])
+        tab //=2
+        ## yellow border
+        tab[0,:] = [255, 255, 0]
+        tab[-1,:] = [255, 255, 0]
+        tab[:,0] = [255, 255, 0]
+        tab[:,-1] = [255, 255, 0]
+        out_img[:htab, wtab:] = tab
+
+        x, y = 430, 0
+        self.first = image_resize(self.first, width = 285, height = None, inter = cv2.INTER_AREA)
+        alpha_mask = self.first[:, :, 2] / 255.0
+        first_img_result = self.first[:, :, :3].copy()
+        overlay_first = self.first[:, :, :3]
+        overlay_image_alpha(first_img_result, overlay_first, x, y, alpha_mask)
+        overlay_first = np.dstack((overlay_first, overlay_first, overlay_first))
+        a, b = overlay_first[:,:,3].nonzero()
+        out_img[a+5, b+215+wtab//2] = first_img_result[a, b, :3]
+        # cv2.imshow(" ", out_img_result)
+        # cv2.waitKey(0)
+
+        # x, y = 430, 0
+        # self.second = image_resize(self.second, width = 285, height = None, inter = cv2.INTER_AREA)
+        # print(self.second.shape)
+        # alpha_mask = self.second[:, :, 2] / 255.0
+        # second_img_result = self.second[:, :, :3].copy()
+        # overlay_second = self.second[:, :, :3]
+        # overlay_image_alpha(second_img_result, overlay_second, x, y, alpha_mask)
+        # print(self.second.shape)
+        # self.second = np.dstack((overlay_second, overlay_second, overlay_second))
+        # print(self.second.shape)
+        # c, d = overlay_second[:,:,3].nonzero()
+        # out_img[c+5, d+505+wtab//2] = second_img_result[a, b, :3]
+
+        # self.second = np.dstack((self.second, self.second, self.second))
+        # y, x = self.second[:,:,3].nonzero()
+        # out_img[y, x+505+wtab//2] = self.second[y, x, :3]
 
         direction = max(set(self.dir), key = self.dir.count)
         msg = "Stay Straight"
@@ -273,33 +374,33 @@ class DrawLanes:
             y, x = self.keep_straight_img[:,:,3].nonzero()
             out_img[y, x-100+W//2] = self.keep_straight_img[y, x, :3]
 
-        cv2.putText(out_img, msg, org=(10, 240), fontFace=cv2.FONT_HERSHEY_DUPLEX , fontScale=1, color=(255, 255, 255), thickness=2)
+        cv2.putText(out_img, msg, org=(10, 240), fontFace=cv2.FONT_HERSHEY_DUPLEX , fontScale=1, color=(87, 255, 209), thickness=2)
         if direction in 'LR':
-            cv2.putText(out_img, curvature_msg, org=(10, 280), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255, 255, 255), thickness=2)
+            cv2.putText(out_img, curvature_msg, org=(10, 280), fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=1, color=(87, 255, 209), thickness=2)
 
         cv2.putText(
             out_img,
             "Good Lane Keeping",
-            org=(10, 400),
-            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            org=(10, 330),
+            fontFace=cv2.FONT_HERSHEY_DUPLEX,
             fontScale=1.2,
-            color=(0, 255, 0),
+            color=(255, 255, 255),
             thickness=2)
 
         cv2.putText(
             out_img,
             "Vehicle is {:.2f} m away from center".format(pos),
-            org=(10, 450),
-            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            org=(10, 380),
+            fontFace=cv2.FONT_HERSHEY_DUPLEX,
             fontScale=0.66,
-            color=(255, 255, 255),
+            color=(87, 255, 209),
             thickness=2)
 
         return out_img
 
     def measure_curvature(self):
-        ym = 30/720
-        xm = 3.7/700
+        ym = 30/720     # 0.04167
+        xm = 3.7/700    # 0.00529
 
         left_fit = self.left_fit.copy()
         right_fit = self.right_fit.copy()

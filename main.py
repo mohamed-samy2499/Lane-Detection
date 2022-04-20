@@ -85,7 +85,7 @@ def main():
     if input_choice ==1 :
         findLaneLines = FindLaneLines()
         # findLaneLines.process_video("project_video.mp4","output_videos/output.mp4")
-        findLaneLines.process_video("5_seconds_video.mkv","output_videos//5_seconds_video_output.mp4")
+        findLaneLines.process_video(in_dir,out_dir)
 
 
 if __name__ == "__main__":

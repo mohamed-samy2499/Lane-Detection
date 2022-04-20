@@ -30,16 +30,16 @@ class Thresholding:
         hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
         hue = hls[:,:,0]
         lightness = hls[:,:,1]
-        #saturation = hls[:,:,2]
-        vue = hsv[:,:,2]
+
+        value = hsv[:,:,2]
 
         #Right lane is white-Coloured
         right_lane = relative_thresholding(lightness, 0.8, 1.0)
         right_lane[:,:750] = 0
 
-        #Left lane is yellow-Coloured
+        #Left lane is orange-Coloured
         left_lane = absolute_thresholding(hue, 20, 30)
-        left_lane &= relative_thresholding(vue, 0.7, 1.0)
+        left_lane &= relative_thresholding(value, 0.7, 1.0)
         left_lane[:,550:] = 0
 
         img_output = left_lane | right_lane

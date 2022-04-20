@@ -28,5 +28,5 @@ class PerspectiveTranform:
 
 
     def NormalView(self, img, img_size=(1280, 720), flags=cv2.INTER_LINEAR):
-        return cv2.warpPerspective(img,self.M_inv,img_size,flag=flags)
+        return cv2.warpPerspective(img,self.M_inv,img_size,flags=flags)
     

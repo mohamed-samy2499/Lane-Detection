@@ -1,4 +1,3 @@
-from cv2 import perspectiveTransform
 import numpy as np
 import matplotlib.image as mpimg
 import cv2
@@ -6,78 +5,81 @@ from docopt import docopt
 from IPython.display import HTML
 from IPython.core.display import Video
 from moviepy.editor import VideoFileClip
-from cameraCalibration import *
+from cameraCalibration import cameraCalibration
 from Thresholding import *
 from PerspectiveTranform import *
 from draw_lanes import *
-
+debug = 1
 class FindLaneLines:
     def __init__(self):
         """ Init Application"""
         self.calibration = cameraCalibration('camera_cal', 9, 6)
         self.thresholding = Thresholding()
-        self.transform = perspectiveTransform()
+        self.transform = PerspectiveTranform()
         self.lanelines = DrawLanes()
 
-    def forward(self, img,debug=0):
-        if (debug == 1):
-            cv2.imshow("calibration", img)
+    def forward(self, img):
+        out_img = np.copy(img)
+        img = self.calibration.undistort(img)
+        if debug == 1:
+            cv2.imshow("camera calibiration",img)
             cv2.waitKey(0)
-
-        img = self.transform.forward(img)
-        first = img
-        if (debug == 1):
-            cv2.imshow("forward transform", img)        ##
+        img = self.transform.BirdView(img)
+        if debug == 1:
+            cv2.imshow("Bird view",img)
             cv2.waitKey(0)
-
         img = self.thresholding.forward(img)
-        if (debug == 1):
-            cv2.imshow("thresholding", img)             ## colored
+        if debug == 1:
+            cv2.imshow("Binary image",img)
             cv2.waitKey(0)
-            
-        img = self.drawlanes.forward(img, first)
-        if (debug == 1):
-            cv2.imshow("drawlanes", img)
+        img,left_line,right_line,img1,topleft_windows,bottomright_windows = self.lanelines.forward(img)
+        if debug == 1:
+            debug_img = np.dstack((img1, img1, img1))
+            cv2.polylines(debug_img,[left_line],False,(255,0,0),15)
+            cv2.polylines(debug_img,[right_line],False,(255,0,0),15)
+            cv2.imshow("lane lines connected",debug_img)
             cv2.waitKey(0)
-        img = self.transform.backward(img)
-        if (debug == 1):
-            cv2.imshow("backward transform", img)
+            for i in range(18):
+                cv2.rectangle(debug_img,topleft_windows[i],bottomright_windows[i],(0,0,255),8)
+            cv2.imshow("sliding windows",debug_img)
+            cv2.waitKey(0)
+            cv2.imshow("Filled lanes",img)
+            cv2.waitKey(0)
+        img = self.transform.NormalView(img)
+        if debug == 1:
+            cv2.imshow("Normal view",img)
             cv2.waitKey(0)
 
         out_img = cv2.addWeighted(out_img, 1, img, 0.6, 0)
-        if (debug == 1):
-            cv2.imshow("before_plot", out_img)
-            cv2.waitKey(0)
-        out_img = self.drawlanes.plot(out_img)
-        if (debug == 1):
-            cv2.imshow("after_plot", out_img)
-            cv2.waitKey(0)
+        # out_img = self.lanelines.plot(out_img)
+        # if debug == 1:
+        #     cv2.imshow("final out",img)
+        #     cv2.waitKey(0)
         return out_img
-    
-    
-    def process_image(self, input_path, output_path,debug=0):
-        img = mpimg.imread(input_path)
-        out_img = self.forward(img,debug)
-        mpimg.imsave(output_path, out_img)
 
-    
+    def process_image(self, input_path, output_path):
+        img = cv2.imread(input_path)
+        img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img,(1280,720))
+        out_img = self.forward(img)
+        cv2.imwrite(output_path,out_img)
+
     def process_video(self, input_path, output_path):
         clip = VideoFileClip(input_path)
         out_clip = clip.fl_image(self.forward)
         out_clip.write_videofile(output_path, audio=False)
 
 def main():
+    in_dir = "lanes2.png"
+    out_dir = "output_videos/lane.jpg"
+    input_choice= 0
+    if input_choice ==0 :
+        findLaneLines = FindLaneLines()
+        findLaneLines.process_image(in_dir,out_dir)
+    if input_choice ==1 :
+        findLaneLines = FindLaneLines()
+        findLaneLines.process_video("project_video.mp4","output_videos/output.mp4")
 
-    findLaneLines = FindLaneLines()
-    # for processing only image
-    img_dir = ""
-    img_out = ""
-    debug = 0
-    findLaneLines.process_image(img_dir,img_out,debug)
-    # for processing a video
-    vid_dir = "challenge_video.mp4"
-    vid_out = "output"
-    findLaneLines.process_video(vid_dir,vid_out)
 
 if __name__ == "__main__":
     main()

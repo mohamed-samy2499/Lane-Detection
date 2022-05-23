@@ -127,7 +127,7 @@ class Descriptor:
 
         if self.hog_features:
             feature_vector  = np.hstack(
-                (feature_vector, self.HOGDescriptor.compute(image)[:,0]))
+                (feature_vector, self.HOGDescriptor.compute(image)[:]))
 
         if self.hist_features:
             # np.histogram() returns a tuple if given a 2D array and an array

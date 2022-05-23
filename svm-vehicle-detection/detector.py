@@ -29,8 +29,7 @@ class Detector:
     def loadClassifier(self, filepath=None):
 
         """
-        Load a classifier trained by the functions in train.py. Either a dict
-        (classifier_data) or pickled file (filepath) may be supplied.
+        Load a classifier trained by the functions in train.py.
         """
         
         filepath = os.path.abspath(filepath)
@@ -44,6 +43,7 @@ class Detector:
         self.channels = classifier_data["channels"]
 
         # instantiate a new descriptor object using the same parameters on which the classifier was trained.
+        # the descriptor produces a feature vector for an input image.
         self.descriptor = Descriptor(
                 hog_features=classifier_data["hog_features"],
                 hist_features=classifier_data["hist_features"],
@@ -102,7 +102,6 @@ class Detector:
         >> threshold (int): Threshold for heatmap pixel values.
         >> min_bbox (int, int): Minimum (width, height) of a detection
             bounding box in pixels. Boxes smaller than this will not be drawn.
-            Defaults to 2% of image size.
         >> show_video (bool): Display the video.
         >> draw_heatmap (bool): Display the heatmap in an inset in the
             upper left corner of the video.
@@ -125,10 +124,10 @@ class Detector:
                 x_range=self.x_range, y_range=self.y_range, scale=self.scale)
 
         if min_bbox is None:
-            min_bbox = (int(0.02 * w), int(0.02 * h))
+            min_bbox = (int(0.02 * w), int(0.02 * h))   # 2% of image size.
 
         # Heatmap inset size.
-        inset_size = (int(draw_heatmap_size * w), int(draw_heatmap_size * h))
+        inset_size = (int(draw_heatmap_size * w), int(draw_heatmap_size * h))   # 20% of image size.
 
         if write:
             vidFilename = datetime.now().strftime("%Y%m%d%H%M") + ".avi"
